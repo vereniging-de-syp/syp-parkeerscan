@@ -1,15 +1,15 @@
 # Reads ikwilhuren.nu and posts the Central Park spots that are "Te huur" to sijpesteijn.pages.dev.
-# Runs on GitHub Actions (.github/workflows/parkeerscan.yml) every 15 minutes, but only reads ikwilhuren.nu
-# when a visitor pressed the scan button or the last scan is a day old. The key comes from the PARKING_KEY secret.
+# Runs on GitHub Actions (.github/workflows/parkeerscan.yml): on schedule at 12:00 and 19:00 Dutch time, and with
+# -Force whenever the scan button on the site starts the job. The key comes from the PARKING_KEY secret.
 param([string]$Site = 'https://sijpesteijn.pages.dev', [switch]$Force)
 
 $ErrorActionPreference = 'Stop'
 
+# the schedule fires in UTC for both summer and winter time; only the run that lands on 12 or 19 o'clock scans
 if (-not $Force) {
-  $current = $null
-  try { $current = Invoke-RestMethod "$Site/api/parking-status" } catch { }  # 404: no scan stored yet
-  $fresh = $current -and $current.scanned -and ((Get-Date).ToUniversalTime() - ([datetime]$current.scanned).ToUniversalTime()).TotalHours -lt 23.5
-  if ($fresh -and -not $current.requested) { Write-Host "Stand van $($current.scanned) is actueel, geen verzoek."; exit 0 }
+  $zone = try { [TimeZoneInfo]::FindSystemTimeZoneById('Europe/Amsterdam') } catch { [TimeZoneInfo]::FindSystemTimeZoneById('W. Europe Standard Time') }
+  $local = [TimeZoneInfo]::ConvertTimeFromUtc([datetime]::UtcNow, $zone)
+  if ($local.Hour -ne 12 -and $local.Hour -ne 19) { Write-Host "Het is $($local.ToString('HH:mm')) in Nederland, geen scan."; exit 0 }
 }
 
 if (-not $env:PARKING_KEY) { throw 'secret PARKING_KEY ontbreekt' }
