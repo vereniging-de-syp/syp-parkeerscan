@@ -1,0 +1,37 @@
+# Refreshes the parking map on sijpesteijn.pages.dev. Checks every 15 minutes whether a visitor asked for a scan;
+# scans ikwilhuren.nu then, and at least once a day. "Run workflow" on the Actions tab scans right away.
+name: Parkeerscan
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: parkeerscan
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan ikwilhuren.nu
+        shell: pwsh
+        env:
+          PARKING_KEY: ${{ secrets.PARKING_KEY }}
+        run: ./scan_parking.ps1 -Force:$${{ github.event_name == 'workflow_dispatch' }}
+
+      # GitHub pauses schedules in repositories without a commit for 60 days
+      - name: Keep the schedule running
+        run: |
+          if [ $(( $(date +%s) - $(git log -1 --format=%ct) )) -gt 4320000 ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit --allow-empty -m 'Keep the scan schedule running'
+            git push
+          fi
