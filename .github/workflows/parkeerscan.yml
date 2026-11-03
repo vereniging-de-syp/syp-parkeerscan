@@ -1,10 +1,12 @@
-# Refreshes the parking map on sijpesteijn.pages.dev. Checks every 15 minutes whether a visitor asked for a scan;
-# scans ikwilhuren.nu then, and at least once a day. "Run workflow" on the Actions tab scans right away.
+# Refreshes the parking map on sijpesteijn.pages.dev: daily at 12:00 and 19:00 Dutch time, and right away when
+# the scan button on the site starts this workflow (at most once an hour). "Run workflow" here also scans right away.
 name: Parkeerscan
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    # 12:00 and 19:00 in Amsterdam are 11:00/18:00 UTC in winter and 10:00/17:00 UTC in summer;
+    # scan_parking.ps1 skips the run that does not land on 12 or 19 o'clock
+    - cron: '2 10,11,17,18 * * *'
   workflow_dispatch:
 
 permissions:
